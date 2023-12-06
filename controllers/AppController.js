@@ -1,32 +1,26 @@
-import redisClient from '../utils/redis';
-import dbClient from '../utils/db';
+const dbClient = require('../utils/db');
+const redisClient = require('../utils/redis');
 
-class AppController {
-  /**
-   * should return if Redis is alive and if the DB is alive too
-   * by using the 2 utils created previously:
-   * { "redis": true, "db": true } with a status code 200
-   */
-  static getStatus(request, response) {
-    const status = {
-      redis: redisClient.isAlive(),
-      db: dbClient.isAlive(),
-    };
-    response.status(200).send(status);
-  }
+const AppController = {
+  async getStatus(request, response) {
+    const redisStatus = redisClient.isAlive();
+    const dbStatus = dbClient.isAlive();
+    if (dbStatus && redisStatus) {
+      return response.status(200).json({ redis: true, db: true });
+    }
+    return response.status(500).json({ redis: false, db: false });
+  },
 
-  /**
-   * should return the number of users and files in DB:
-   * { "users": 12, "files": 1231 }
-   *  with a status code 200
-   */
-  static async getStats(request, response) {
-    const stats = {
-      users: await dbClient.nbUsers(),
-      files: await dbClient.nbFiles(),
-    };
-    response.status(200).send(stats);
-  }
-}
+  async getStats(request, response) {
+    try {
+      const usersCount = await dbClient.nbUsers();
+      const filesCount = await dbClient.nbFiles();
 
-export default AppController;
+      return response.status(200).json({ users: usersCount, files: filesCount });
+    } catch (err) {
+      return response.status(500).json({ error: 'Error fetching stats' });
+    }
+  },
+};
+
+module.exports = AppController;
