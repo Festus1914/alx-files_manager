@@ -1,63 +1,36 @@
-import { MongoClient } from 'mongodb';
+const { MongoClient } = require('mongodb');
 
 class DBClient {
   constructor() {
-    const {
-      DB_HOST = 'localhost',
-      DB_PORT = 27017,
-      DB_DATABASE = 'files_manager',
-    } = process.env;
+    const host = process.env.DB_HOST || 'localhost';
+    const port = process.env.DB_PORT || 27017;
+    const database = process.env.DB_DATABASE || 'files_manager';
+    const dbURL = `mongodb://${host}:${port}/${database}`;
 
-    this.dbHost = DB_HOST;
-    this.dbPort = DB_PORT;
-    this.dbDatabase = DB_DATABASE;
-    this.client = new MongoClient(`mongodb://${this.dbHost}:${this.dbPort}`, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-
-    this.isAlive();
+    this.client = new MongoClient(dbURL, { useUnifiedTopology: true });
+    this.client.connect();
   }
 
-  async isAlive() {
-    try {
-      await this.client.connect();
-      console.log('DBClient: MongoDB connection established');
-      return true;
-    } catch (error) {
-      console.error('DBClient: MongoDB connection failed');
-      return false;
-    } finally {
-      await this.client.close();
-    }
+  isAlive() {
+    return this.client.isConnected();
   }
 
   async nbUsers() {
-    try {
-      await this.client.connect();
-      const usersCount = await this.client
-        .db(this.dbDatabase)
-        .collection('users')
-        .countDocuments();
-      return usersCount;
-    } finally {
-      await this.client.close();
-    }
+    return this.client.db().collection('users').countDocuments();
   }
 
   async nbFiles() {
-    try {
-      await this.client.connect();
-      const filesCount = await this.client
-        .db(this.dbDatabase)
-        .collection('files')
-        .countDocuments();
-      return filesCount;
-    } finally {
-      await this.client.close();
-    }
+    return this.client.db().collection('files').countDocuments();
+  }
+
+  async usersCollection() {
+    return this.client.db().collection('users');
+  }
+
+  async filesCollection() {
+    return this.client.db().collection('files');
   }
 }
-
-const dbClient = new DBClient();
-export default dbClient;
+// eslint-disable-next-line import/prefer-default-export
+export const dbClient = new DBClient();
+module.exports = dbClient;
